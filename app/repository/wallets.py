@@ -4,7 +4,8 @@ from typing import cast
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
-from app.models import WalletOrm
+from app.models import UserOrm, WalletOrm
+from app.repository import users as users_repository
 
 
 def is_wallet_exist(session: Session, wallet_name: str) -> bool:
@@ -49,9 +50,8 @@ def get_all_wallets(session: Session) -> dict[str, Decimal]:
     return {name: Decimal(balance) for name, balance in result}
 
 
-def create_wallet(session: Session, wallet_name: str, amount: Decimal = Decimal("0")) -> WalletOrm:
-    # with SessionLocal() as session:
-    new_wallet = WalletOrm(name=wallet_name, balance=amount)
+def create_wallet(session: Session, wallet_name: str, user_id: int, amount: Decimal = Decimal("0")) -> WalletOrm:
+    new_wallet = WalletOrm(name=wallet_name, balance=amount, user_id=user_id)
     session.add(new_wallet)
     session.flush()
     session.refresh(new_wallet)

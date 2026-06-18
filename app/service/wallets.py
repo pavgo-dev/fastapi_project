@@ -3,8 +3,10 @@ from decimal import Decimal
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from app.models import UserOrm
+from app.repository import users as user_repository
 from app.repository import wallets as wallets_repository
-from app.schemas import CreateWalletRequest
+from app.schemas import CreateWalletRequest, CreateWalletResponse
 
 
 def get_balance(session: Session, wallet_name: str | None = None):
@@ -20,16 +22,17 @@ def get_balance(session: Session, wallet_name: str | None = None):
     return {"wallet": wallet_name, "balance": balance}
 
 
-def create_wallet(session: Session, wallet: CreateWalletRequest):
+def create_wallet(session: Session, current_user: UserOrm, wallet: CreateWalletRequest) -> CreateWalletResponse:
+    # Проверяю есть ли пользователь, которому добавляем кошелёк
+    user_id = current_user.id
     # Если кошелёк есть, возвращаем ошибку
     if wallets_repository.is_wallet_exist(session, wallet.name):
         raise HTTPException(status_code=400, detail=f"Wallet '{wallet.name}' already exists")
+
     # Если кошелька нет, создаём кошелёк с изначальным балансом
-    new_wallet = wallets_repository.create_wallet(session, wallet.name, wallet.initial_balance)
+    new_wallet = wallets_repository.create_wallet(
+        session, wallet_name=wallet.name, user_id=user_id, amount=wallet.initial_balance
+    )
     session.commit()
     # Возвращаем информацию о созданном кошельке
-    return {
-        "message": f"Wallet '{new_wallet.name}' created",
-        "wallet": new_wallet.name,
-        "balance": new_wallet.balance,
-    }
+    return CreateWalletResponse.model_validate(new_wallet)
