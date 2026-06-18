@@ -4,8 +4,7 @@ from typing import cast
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
-from app.models import UserOrm, WalletOrm
-from app.repository import users as users_repository
+from app.models import WalletOrm
 
 
 def is_wallet_exist(session: Session, wallet_name: str) -> bool:

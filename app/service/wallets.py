@@ -4,7 +4,6 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.models import UserOrm
-from app.repository import users as user_repository
 from app.repository import wallets as wallets_repository
 from app.schemas import CreateWalletRequest, CreateWalletResponse
 
