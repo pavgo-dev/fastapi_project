@@ -3,9 +3,9 @@ from decimal import Decimal
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.models import UserOrm
+from app.models import UserOrm, WalletOrm
 from app.repository import wallets as wallets_repository
-from app.schemas.wallets import CreateWalletRequest, CreateWalletResponse
+from app.schemas.wallets import CreateWalletRequest
 
 
 def get_balance(session: Session, current_user: UserOrm, wallet_name: str | None = None):
@@ -22,7 +22,7 @@ def get_balance(session: Session, current_user: UserOrm, wallet_name: str | None
     return {"wallet": wallet_name, "balance": balance}
 
 
-def create_wallet(session: Session, current_user: UserOrm, wallet: CreateWalletRequest) -> CreateWalletResponse:
+def create_wallet(session: Session, current_user: UserOrm, wallet: CreateWalletRequest) -> WalletOrm:
     # Проверяю есть ли пользователь, которому добавляем кошелёк
     user_id = current_user.id
     # Если кошелёк есть, возвращаем ошибку
@@ -35,4 +35,4 @@ def create_wallet(session: Session, current_user: UserOrm, wallet: CreateWalletR
     )
     session.commit()
     # Возвращаем информацию о созданном кошельке
-    return CreateWalletResponse.model_validate(new_wallet)
+    return new_wallet

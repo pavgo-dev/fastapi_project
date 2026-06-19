@@ -27,4 +27,14 @@ class CreateWalletResponse(BaseModel):
     id: int
     name: str
     user_id: int
-    initial_balance: Decimal = Field(validation_alias="balance")
+    balance: Decimal
+
+
+class SingleWalletBalanceResponse(BaseModel):
+    wallet: str
+    balance: Decimal
+
+
+# Ответ, когда запросили сумму всех кошельков
+class TotalBalanceResponse(BaseModel):
+    total_balance: Decimal

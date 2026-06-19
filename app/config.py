@@ -8,12 +8,13 @@ class Settings(BaseSettings):
     DB_USER: str = Field(default="postgres")
     DB_PASS: str = Field(default="")
     DB_NAME: str = Field(default="postgres")
+    TESTDB_NAME: str = Field(default="postgres")
 
     @property
-    def DATABASE_URL_psycopg_async(self):
+    def TESTDATABASE_URL_psycopg_sync(self):
         # DSN
         # postgresql(СУБД_название)+psycopg(ЛИБА_название)://user_name:pass@host:port/db_name
-        return f"postgresql+psycopg://{self.DB_USER}:{self.DB_PASS}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+        return f"postgresql+psycopg://{self.DB_USER}:{self.DB_PASS}@{self.DB_HOST}:{self.DB_PORT}/{self.TESTDB_NAME}"
 
     @property
     def DATABASE_URL_psycopg(self):

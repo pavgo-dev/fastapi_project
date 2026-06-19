@@ -11,13 +11,13 @@ from app.repository import users as users_repository
 security = HTTPBearer()
 
 
-def get_db() -> Generator[Session, None, None]:
+def get_session() -> Generator[Session, None, None]:
     with SessionLocal() as session:
         yield session  # Передает сессию и держит её открытой на время запроса
 
 
 def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security), session: Session = Depends(get_db)
+    credentials: HTTPAuthorizationCredentials = Depends(security), session: Session = Depends(get_session)
 ) -> UserOrm:
     login = credentials.credentials
     user = users_repository.get_user(session, login=login)

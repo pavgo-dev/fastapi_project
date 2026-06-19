@@ -21,3 +21,13 @@ class OperationRequest(BaseModel):
             raise ValueError("This wallet name is reserved")
         # Если всё ок, возвращаю имя
         return v
+
+
+class OperationResponse(BaseModel):
+    model_config = {"from_attributes": True}
+
+    message: str
+    wallet: str
+    amount: Decimal
+    description: str | None
+    new_balance: Decimal

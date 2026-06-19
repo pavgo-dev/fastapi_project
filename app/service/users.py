@@ -1,14 +1,15 @@
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from app.models import UserOrm
 from app.repository import users as users_repository
-from app.schemas.users import CreateUserRequest, CreateUserResponse
+from app.schemas.users import CreateUserRequest
 
 
-def create_user(session: Session, payload: CreateUserRequest) -> CreateUserResponse:
+def create_user(session: Session, payload: CreateUserRequest) -> UserOrm:
     if users_repository.get_user(session, payload.login):
         raise HTTPException(status_code=400, detail="User already exists")
 
     user = users_repository.create_user(session, payload.login)
     session.commit()
-    return CreateUserResponse.model_validate(user)
+    return user
