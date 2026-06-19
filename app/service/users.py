@@ -2,7 +2,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.repository import users as users_repository
-from app.schemas import CreateUserRequest, CreateUserResponse
+from app.schemas.users import CreateUserRequest, CreateUserResponse
 
 
 def create_user(session: Session, payload: CreateUserRequest) -> CreateUserResponse:

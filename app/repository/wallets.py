@@ -7,18 +7,16 @@ from sqlalchemy.orm import Session
 from app.models import WalletOrm
 
 
-def is_wallet_exist(session: Session, wallet_name: str) -> bool:
-    # with SessionLocal() as session:
-    query = select(WalletOrm).where(WalletOrm.name == wallet_name)
+def is_wallet_exist(session: Session, user_id: int, wallet_name: str) -> bool:
+    query = select(WalletOrm).where(WalletOrm.name == wallet_name, WalletOrm.user_id == user_id)
     wallet = session.scalar(query)
     return wallet is not None
 
 
-def add_income(session: Session, wallet_name: str, amount: Decimal) -> Decimal:
-    # with SessionLocal() as session:
+def add_income(session: Session, user_id: int, wallet_name: str, amount: Decimal) -> Decimal:
     query = (
         update(WalletOrm)
-        .where(WalletOrm.name == wallet_name)
+        .where(WalletOrm.name == wallet_name, WalletOrm.user_id == user_id)
         .values(balance=WalletOrm.balance + amount)
         .returning(WalletOrm.balance)
     )
@@ -27,24 +25,26 @@ def add_income(session: Session, wallet_name: str, amount: Decimal) -> Decimal:
     return cast(Decimal, new_balance)
 
 
-def get_wallet_balance_by_name(session: Session, wallet_name: str) -> Decimal:
-    # with SessionLocal() as session:
-    balance = session.scalar(select(WalletOrm.balance).where(WalletOrm.name == wallet_name))
+def get_wallet_balance_by_name(session: Session, wallet_name: str, user_id: int) -> Decimal:
+    balance = session.scalar(
+        select(WalletOrm.balance).where(WalletOrm.name == wallet_name, WalletOrm.user_id == user_id)
+    )
     return cast(Decimal, balance)
 
 
-def set_new_balance(session: Session, wallet_name: str, new_balance: Decimal) -> Decimal:
-    # with SessionLocal() as session:
+def set_new_balance(session: Session, user_id: int, wallet_name: str, new_balance: Decimal) -> Decimal:
     query = (
-        update(WalletOrm).where(WalletOrm.name == wallet_name).values(balance=new_balance).returning(WalletOrm.balance)
+        update(WalletOrm)
+        .where(WalletOrm.name == wallet_name, WalletOrm.user_id == user_id)
+        .values(balance=new_balance)
+        .returning(WalletOrm.balance)
     )
     result_balance = session.execute(query).scalar()
     return cast(Decimal, result_balance)
 
 
-def get_all_wallets(session: Session) -> dict[str, Decimal]:
-    # with SessionLocal() as session:
-    query = select(WalletOrm.name, WalletOrm.balance)
+def get_all_wallets(session: Session, user_id: int) -> dict[str, Decimal]:
+    query = select(WalletOrm.name, WalletOrm.balance).where(WalletOrm.user_id == user_id)
     result = session.execute(query)
     return {name: Decimal(balance) for name, balance in result}
 
