@@ -5,3 +5,8 @@ class CurrencyEnum(StrEnum):
     RUB = "RUB"
     USD = "USD"
     EUR = "EUR"
+
+
+class OperationTypeEnum(StrEnum):
+    income = "income"
+    expense = "expense"

@@ -8,7 +8,7 @@ from app.schemas.wallets import CreateWalletRequest
 
 def get_balance(session: Session, current_user: UserOrm, wallet_name: str | None = None):
     user_id = current_user.id
-    # Если имя кошелька не указано, возвращаем список ВСЕХ кошельков
+    # Если имя кошелька не указано, возвращаем список всех кошельков
     if wallet_name is None:
         wallets = wallets_repository.get_all_wallets(session, user_id)
         return {
@@ -18,11 +18,11 @@ def get_balance(session: Session, current_user: UserOrm, wallet_name: str | None
         }
     # Если имя указано, запрашиваем баланс конкретного кошелька
     balance_data = wallets_repository.get_wallet_balance_by_name(session, wallet_name, user_id)
-    # Если метод вернул None — кошелька не существует
+    # Если метод вернул None значит кошелька не существует
     if balance_data is None:
         raise HTTPException(status_code=404, detail=f"Wallet '{wallet_name}' not found")
 
-    # Обращаемся по индексам (0 — баланс, 1 — валюта)
+    # Обращаемся по индексам (0 баланс, 1 валюта)
     return {"wallet_name": wallet_name, "balance": balance_data[0], "currency": balance_data[1]}
 
 

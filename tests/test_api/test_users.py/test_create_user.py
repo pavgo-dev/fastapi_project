@@ -15,9 +15,9 @@ def test_success(client):
 @pytest.mark.parametrize(
     ("login"),
     [
-        ("abc" * 50),  # Сценарий 1: Длинное имя
-        ("   "),  # Сценарий 2: Пустое имя
-        ("admin"),  # Сценарий 3: Запрещённое имя
+        ("abc" * 50),  # Длинное имя
+        ("   "),  # Пустое имя
+        ("admin"),  # Запрещённое имя
     ],
     ids=["long_name", "empty_name", "reserved_name"],
 )

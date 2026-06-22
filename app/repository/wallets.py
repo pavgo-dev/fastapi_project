@@ -9,31 +9,30 @@ from app.enum import CurrencyEnum
 from app.models import WalletOrm
 
 
-def add_income(session: Session, user_id: uuid.UUID, wallet_name: str, amount: Decimal) -> Decimal | None:
+def get_balance_for_update(
+    session: Session, wallet_name: str, user_id: uuid.UUID
+) -> tuple[uuid.UUID, Decimal, CurrencyEnum] | None:
+
     query = (
-        update(WalletOrm)
+        select(WalletOrm.id, WalletOrm.balance, WalletOrm.currency)
         .where(WalletOrm.name == wallet_name, WalletOrm.user_id == user_id)
-        .values(balance=WalletOrm.balance + amount)
-        .returning(WalletOrm.balance)
+        .with_for_update()  # Защита от Race Condition на этапе чтения
     )
-    new_balance = session.execute(query).scalar()
-    if new_balance is None:
+    result = session.execute(query).one_or_none()
+    if result is None:
         return None
-    return cast(Decimal, new_balance)
+    return result.id, result.balance, result.currency
 
 
 def get_wallet_balance_by_name(
     session: Session, wallet_name: str, user_id: uuid.UUID
 ) -> tuple[Decimal, CurrencyEnum] | None:
-
     query = select(WalletOrm.balance, WalletOrm.currency).where(
         WalletOrm.name == wallet_name, WalletOrm.user_id == user_id
     )
     result = session.execute(query).one_or_none()
-
     if result is None:
         return None
-
     return result.balance, result.currency
 
 
@@ -62,17 +61,3 @@ def create_wallet(
     session.flush()
     session.refresh(new_wallet)
     return new_wallet
-
-
-def get_balance_for_update(
-    session: Session, wallet_name: str, user_id: uuid.UUID
-) -> tuple[Decimal, CurrencyEnum] | None:
-    query = (
-        select(WalletOrm.balance, WalletOrm.currency)
-        .where(WalletOrm.name == wallet_name, WalletOrm.user_id == user_id)
-        .with_for_update()  # Защита от Race Condition на этапе чтения
-    )
-    result = session.execute(query).one_or_none()
-    if result is None:
-        return None
-    return result.balance, result.currency

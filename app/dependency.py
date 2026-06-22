@@ -21,9 +21,9 @@ def get_current_user(
 ) -> UserOrm:
     token = credentials.credentials
 
-    # Слой защиты (будущий JWT): перехватываем невалидный формат строки
+    # Слой защиты (будущий JWT). перехват невалидного формата строки
     try:
-        # Когда добавлю библиотеку PyJWT, здесь будет: payload = jwt.decode(...)
+        # Когда добавлю библиотеку PyJWT здесь будет   payload = jwt.decode(...)
         login = token
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid token") from None

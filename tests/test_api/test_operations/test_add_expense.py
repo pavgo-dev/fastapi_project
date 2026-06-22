@@ -7,6 +7,9 @@ from decimal import Decimal
 
 import pytest
 
+from app.enum import CurrencyEnum
+from app.repository import wallets as wallets_repository
+
 # Данные из фикстуры
 # user = UserOrm(login="test_user")
 # wallet = WalletOrm(name="card", balance=Decimal("200.20"), user_id=test_user.id, currency="RUB")
@@ -19,36 +22,35 @@ def test_success(client, test_user, test_wallet):
 
     # Arrange  ОПРЕДЕЛИЛ в tests/test_api/test_operations/conftest.py
 
-    # user = UserOrm(login="test_user")
-    # db_session.add(user)
-    # db_session.flush()
-    # wallet = WalletOrm(name="card", balance=Decimal("200.20"), user_id=test_user.id)
-    # db_session.add(wallet)
-    # db_session.flush()
-
     # ACT
     response = client.post(
         "api/v1/operations/expense",
-        json={"wallet_name": "card", "amount": "50.10", "description": "Food"},
+        json={"wallet_name": "card", "amount": "50.10", "description": "Food", "category": "Grocery"},
         headers={"Authorization": f"Bearer {test_user.login}"},
     )
 
     # Assert
     assert response.status_code == 200
-    assert response.json()["message"] == "Expense added"
-    assert response.json()["wallet"] == test_wallet.name
-    assert Decimal(str(response.json()["amount"])) == Decimal("50.10")
-    assert response.json()["description"] == "Food"
-    assert Decimal(str(response.json()["new_balance"])) == Decimal("150.10")
-    assert response.json()["currency"] == "RUB"
+
+    data = response.json()
+    assert "id" in data
+    assert "created_at" in data
+    assert data["type"] == "expense"
+    assert data["category"] == "Grocery"
+
+    assert data["wallet_name"] == test_wallet.name
+    assert Decimal(str(data["amount"])) == Decimal("50.10")
+    assert data["description"] == "Food"
+    assert Decimal(str(data["new_balance"])) == Decimal("150.10")
+    assert data["currency"] == "RUB"
 
 
 @pytest.mark.parametrize(
     ("wallet_name", "amount"),
     [
-        ("card", "-100"),  # Сценарий 1: Отрицательная сумма
-        ("card", "0"),  # Сценарий 2: Нулевая сумма
-        ("   ", "100"),  # Сценарий 3: Пробелы вместо имени кошелька
+        ("card", "-100"),  # Отрицательная сумма
+        ("card", "0"),  # Нулевая сумма
+        ("   ", "100"),  # Пробелы вместо имени кошелька
     ],
     ids=["negative_amount", "zero_amount", "empty_wallet_name"],
 )
@@ -106,15 +108,30 @@ def test_insufficient_funds(db_session, client, test_user, test_wallet):
     assert test_wallet.balance == Decimal("200.20")
 
 
-def test_expense_from_foreign_wallet(client, test_user, test_wallet_3):
+def test_expense_from_foreign_wallet(client, db_session, test_user):
+    from app.models import UserOrm
+
+    foreign_user = UserOrm(login="victim_user")
+    db_session.add(foreign_user)
+    db_session.flush()
+
+    wallets_repository.create_wallet(
+        session=db_session,
+        wallet_name="cash",
+        user_id=foreign_user.id,
+        currency=CurrencyEnum.RUB,
+        amount=Decimal("500.00"),
+    )
+    db_session.flush()
+
     response = client.post(
         "api/v1/operations/expense",
-        json={"wallet_name": test_wallet_3.name, "amount": "10.00", "description": "Steal"},
+        json={"wallet_name": "cash", "amount": "10.00", "description": "Steal"},
         headers={"Authorization": f"Bearer {test_user.login}"},
     )
 
     assert response.status_code == 404
-    assert response.json()["detail"] == f"Wallet '{test_wallet_3.name}' not found"
+    assert response.json()["detail"] == "Wallet 'cash' not found"
 
 
 def test_expense_exact_zero_balance(client, test_user, test_wallet):
@@ -126,3 +143,14 @@ def test_expense_exact_zero_balance(client, test_user, test_wallet):
 
     assert response.status_code == 200
     assert Decimal(str(response.json()["new_balance"])) == Decimal("0.0000")
+
+
+def test_expense_one_penny_overflow(client, test_user, test_wallet):
+    response = client.post(
+        "api/v1/operations/expense",
+        json={"wallet_name": test_wallet.name, "amount": "200.21", "description": "Overdraft"},
+        headers={"Authorization": f"Bearer {test_user.login}"},
+    )
+
+    assert response.status_code == 400
+    assert "Insufficient funds" in response.json()["detail"]

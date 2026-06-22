@@ -63,10 +63,10 @@ def test_wallet_exists(client, test_user, test_wallet):
 @pytest.mark.parametrize(
     ("name", "balance"),
     [
-        ("abc" * 50, "0"),  # Сценарий 1: Длинное имя
-        ("   ", "200"),  # Сценарий 2: Пустое имя
-        ("admin", "0"),  # Сценарий 3: Запрещённое имя
-        ("normal name", "-1000"),  # Сценарий 4: Негативный баланс
+        ("abc" * 50, "0"),  # Длинное имя
+        ("   ", "200"),  # Пустое имя
+        ("admin", "0"),  # Запрещённое имя
+        ("normal name", "-1000"),  # Негативный баланс
     ],
     ids=["long_name", "empty_name", "reserved_name", "negative_initial_balance"],
 )
