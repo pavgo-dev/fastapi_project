@@ -1,14 +1,24 @@
 import uuid
 from decimal import Decimal
+from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from app.enum import CurrencyEnum
 
 
 class CreateWalletRequest(BaseModel):
     name: str = Field(max_length=127)
-    initial_balance: Decimal = Field(
-        default=Decimal("0"), ge=Decimal("0"), description="Initial balance cannot be negative"
-    )
+    initial_balance: Annotated[
+        Decimal,
+        Field(
+            max_digits=18,
+            decimal_places=4,
+            ge=Decimal("0.0000"),
+            description="Initial balance cannot be negative",
+        ),
+    ] = Decimal("0.0000")
+    currency: CurrencyEnum = CurrencyEnum.RUB
 
     @field_validator("name")
     @classmethod
@@ -29,13 +39,15 @@ class CreateWalletResponse(BaseModel):
     name: str
     user_id: uuid.UUID
     balance: Decimal
+    currency: CurrencyEnum = CurrencyEnum.RUB
 
 
 class SingleWalletBalanceResponse(BaseModel):
-    wallet: str
+    wallet_name: str
     balance: Decimal
+    currency: CurrencyEnum
 
 
 # Ответ, когда запросили сумму всех кошельков
 class TotalBalanceResponse(BaseModel):
-    total_balance: Decimal
+    wallets: list[SingleWalletBalanceResponse]

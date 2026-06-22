@@ -3,10 +3,12 @@ from decimal import Decimal
 from typing import Annotated
 
 from sqlalchemy import UUID, ForeignKey, Numeric, String, UniqueConstraint
+from sqlalchemy import Enum as SqlalchemyEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from uuid_utils import uuid7
 
 from app.database import Base
+from app.enum import CurrencyEnum
 
 id_pk = Annotated[
     uuid.UUID, mapped_column(UUID(as_uuid=True), default=lambda: uuid.UUID(bytes=uuid7().bytes), primary_key=True)
@@ -31,6 +33,9 @@ class WalletOrm(Base):
     balance: Mapped[Decimal] = mapped_column(Numeric(precision=18, scale=4), default=Decimal("0"))
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    currency: Mapped[CurrencyEnum] = mapped_column(
+        SqlalchemyEnum(CurrencyEnum), default=CurrencyEnum.RUB, nullable=False
     )
 
     user: Mapped["UserOrm"] = relationship("UserOrm", back_populates="wallets")

@@ -19,9 +19,19 @@ def get_session() -> Generator[Session, None, None]:
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security), session: Session = Depends(get_session)
 ) -> UserOrm:
-    login = credentials.credentials
+    token = credentials.credentials
+
+    # Слой защиты (будущий JWT): перехватываем невалидный формат строки
+    try:
+        # Когда добавлю библиотеку PyJWT, здесь будет: payload = jwt.decode(...)
+        login = token
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token") from None
+
+    # Ищу пользователя в базе данных
     user = users_repository.get_user(session, login=login)
+
     if not user:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        raise HTTPException(status_code=401, detail="Not authenticated")
 
     return user

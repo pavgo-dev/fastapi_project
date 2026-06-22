@@ -9,7 +9,10 @@ import pytest
 
 # Данные из фикстуры
 # user = UserOrm(login="test_user")
-# wallet = WalletOrm(name="card", balance=Decimal("200.20"), user_id=test_user.id)
+# wallet = WalletOrm(name="card", balance=Decimal("200.20"), user_id=test_user.id, currency="RUB")
+
+# user_1 = UserOrm(login="test_user_1")
+# wallet_3 = WalletOrm(name="cash", balance=Decimal("5050"), user_id=test_user_1.id, currency="RUB")
 
 
 def test_success(client, test_user, test_wallet):
@@ -37,6 +40,7 @@ def test_success(client, test_user, test_wallet):
     assert Decimal(str(response.json()["amount"])) == Decimal("50.10")
     assert response.json()["description"] == "Food"
     assert Decimal(str(response.json()["new_balance"])) == Decimal("150.10")
+    assert response.json()["currency"] == "RUB"
 
 
 @pytest.mark.parametrize(
@@ -98,5 +102,27 @@ def test_insufficient_funds(db_session, client, test_user, test_wallet):
 
     assert response.status_code == 400
 
-    db_session.refresh(test_wallet)
+    db_session.expire(test_wallet)
     assert test_wallet.balance == Decimal("200.20")
+
+
+def test_expense_from_foreign_wallet(client, test_user, test_wallet_3):
+    response = client.post(
+        "api/v1/operations/expense",
+        json={"wallet_name": test_wallet_3.name, "amount": "10.00", "description": "Steal"},
+        headers={"Authorization": f"Bearer {test_user.login}"},
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == f"Wallet '{test_wallet_3.name}' not found"
+
+
+def test_expense_exact_zero_balance(client, test_user, test_wallet):
+    response = client.post(
+        "api/v1/operations/expense",
+        json={"wallet_name": test_wallet.name, "amount": "200.20", "description": "All in"},
+        headers={"Authorization": f"Bearer {test_user.login}"},
+    )
+
+    assert response.status_code == 200
+    assert Decimal(str(response.json()["new_balance"])) == Decimal("0.0000")

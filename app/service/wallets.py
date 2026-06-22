@@ -1,5 +1,3 @@
-from decimal import Decimal
-
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
@@ -10,29 +8,32 @@ from app.schemas.wallets import CreateWalletRequest
 
 def get_balance(session: Session, current_user: UserOrm, wallet_name: str | None = None):
     user_id = current_user.id
-    # Если имя кошелька не указано, считаем и возвращаем общий баланс
+    # Если имя кошелька не указано, возвращаем список ВСЕХ кошельков
     if wallet_name is None:
         wallets = wallets_repository.get_all_wallets(session, user_id)
-        return {"total_balance": sum(wallets.values(), Decimal("0"))}
-    # Проверяем существует ли запрашиваемый кошелек Fasle=возвращать ошибку
-    if not wallets_repository.is_wallet_exist(session, user_id, wallet_name):
+        return {
+            "wallets": [
+                {"wallet_name": name, "balance": balance, "currency": currency} for name, balance, currency in wallets
+            ]
+        }
+    # Если имя указано, запрашиваем баланс конкретного кошелька
+    balance_data = wallets_repository.get_wallet_balance_by_name(session, wallet_name, user_id)
+    # Если метод вернул None — кошелька не существует
+    if balance_data is None:
         raise HTTPException(status_code=404, detail=f"Wallet '{wallet_name}' not found")
-    # Если существует возвращаем баланс конкретного кошелька
-    balance = wallets_repository.get_wallet_balance_by_name(session, wallet_name, user_id)
-    return {"wallet": wallet_name, "balance": balance}
+
+    # Обращаемся по индексам (0 — баланс, 1 — валюта)
+    return {"wallet_name": wallet_name, "balance": balance_data[0], "currency": balance_data[1]}
 
 
 def create_wallet(session: Session, current_user: UserOrm, wallet: CreateWalletRequest) -> WalletOrm:
-    # Проверяю есть ли пользователь, которому добавляем кошелёк
     user_id = current_user.id
-    # Если кошелёк есть, возвращаем ошибку
-    if wallets_repository.is_wallet_exist(session, user_id, wallet.name):
+    if wallets_repository.get_wallet_balance_by_name(session, wallet.name, user_id) is not None:
         raise HTTPException(status_code=400, detail=f"Wallet '{wallet.name}' already exists")
 
-    # Если кошелька нет, создаём кошелёк с изначальным балансом
+    # Если кошелька нет, создаём кошелёк
     new_wallet = wallets_repository.create_wallet(
-        session, wallet_name=wallet.name, user_id=user_id, amount=wallet.initial_balance
+        session, wallet_name=wallet.name, user_id=user_id, amount=wallet.initial_balance, currency=wallet.currency
     )
     session.commit()
-    # Возвращаем информацию о созданном кошельке
     return new_wallet

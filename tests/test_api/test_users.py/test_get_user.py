@@ -11,6 +11,8 @@ def test_success(client, test_user):
     )
 
     assert response.status_code == 200
+    assert response.json()["login"] == test_user.login
+    assert response.json()["id"] == str(test_user.id)  # UUID в JSON приходит строкой
 
 
 def test_not_authorized(client):
@@ -31,3 +33,4 @@ def test_invalid_token(client, test_user, test_user_1):
     )
 
     assert response.status_code == 401
+    assert response.json()["detail"] == "Not authenticated"

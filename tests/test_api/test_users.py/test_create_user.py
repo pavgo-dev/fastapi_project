@@ -8,6 +8,8 @@ def test_success(client):
     )
 
     assert response.status_code == 200
+    assert "id" in response.json()
+    assert response.json()["login"] == "new user"
 
 
 @pytest.mark.parametrize(

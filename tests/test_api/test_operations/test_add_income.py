@@ -4,7 +4,7 @@ import pytest
 
 # Данные из фикстуры
 # user = UserOrm(login="test_user")
-# wallet = WalletOrm(name="card", balance=Decimal("200.20"), user_id=test_user.id)
+# wallet = WalletOrm(name="card", balance=Decimal("200.20"), user_id=test_user.id, currency="RUB")
 
 
 def test_success(client, test_user, test_wallet):
@@ -14,11 +14,13 @@ def test_success(client, test_user, test_wallet):
         headers={"Authorization": f"Bearer {test_user.login}"},
     )
 
+    assert response.status_code == 200
     assert response.json()["message"] == "Income added"
     assert response.json()["wallet"] == test_wallet.name
     assert Decimal(str(response.json()["amount"])) == Decimal("100.65")
     assert response.json()["description"] == "salary"
     assert Decimal(str(response.json()["new_balance"])) == Decimal("300.85")
+    assert response.json()["currency"] == "RUB"
 
 
 @pytest.mark.parametrize(

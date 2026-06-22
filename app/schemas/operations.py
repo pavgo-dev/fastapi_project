@@ -2,6 +2,8 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.enum import CurrencyEnum
+
 
 class OperationRequest(BaseModel):
     wallet_name: str = Field(max_length=127)
@@ -31,3 +33,4 @@ class OperationResponse(BaseModel):
     amount: Decimal
     description: str | None
     new_balance: Decimal
+    currency: CurrencyEnum

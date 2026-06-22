@@ -4,11 +4,11 @@ import pytest
 
 # Данные из фикстуры
 # user = UserOrm(login="test_user")
-# wallet = WalletOrm(name="card", balance=Decimal("200.20"), user_id=test_user.id)
-# wallet_2 = WalletOrm(name="cash", balance=Decimal("100.50"), user_id=test_user.id)
+# wallet = WalletOrm(name="card", balance=Decimal("200.20"), user_id=test_user.id, currency="RUB")
+# wallet_2 = WalletOrm(name="cash", balance=Decimal("100.50"), user_id=test_user.id, currency="USD")
 
 # user_1 = UserOrm(login="test_user_1")
-# wallet_3 = WalletOrm(name="cash", balance=Decimal("5050"), user_id=test_user_1.id)
+# wallet_3 = WalletOrm(name="cash", balance=Decimal("5050"), user_id=test_user_1.id, currency="RUB")
 
 
 def test_succes(client, test_user, test_wallet, test_wallet_2, test_user_1, test_wallet_3):
@@ -21,18 +21,21 @@ def test_succes(client, test_user, test_wallet, test_wallet_2, test_user_1, test
     assert response.status_code == 200
     assert response.json()["name"] == "my finance"
     assert Decimal(str(response.json()["balance"])) == Decimal("0")
+    assert response.json()["currency"] == "RUB"
+    assert response.json()["user_id"] == str(test_user.id)
 
 
 def test_succes_positive_balance(client, test_user, test_wallet, test_wallet_2, test_user_1, test_wallet_3):
     response = client.post(
         "api/v1/wallets",
-        json={"name": "my finance", "initial_balance": "1000.50"},
+        json={"name": "my finance", "initial_balance": "1000.50", "currency": "USD"},
         headers={"Authorization": f"Bearer {test_user.login}"},
     )
 
     assert response.status_code == 200
     assert response.json()["name"] == "my finance"
     assert Decimal(str(response.json()["balance"])) == Decimal("1000.50")
+    assert response.json()["currency"] == "USD"
 
 
 def test_succes_wallet_exists_another_user(client, test_user, test_wallet, test_wallet_2, test_user_1, test_wallet_3):
@@ -75,3 +78,14 @@ def test_validation_errors(client, test_user, name, balance):
     )
 
     assert response.status_code == 422
+
+
+def test_create_wallet_overflow_amount(client, test_user):
+    response = client.post(
+        "api/v1/wallets",
+        json={"name": "rich wallet", "initial_balance": "999999999999999.00"},  # 15 знаков до запятой
+        headers={"Authorization": f"Bearer {test_user.login}"},
+    )
+
+    # База данных или валидация Pydantic должны это заблокировать
+    assert response.status_code in [400, 422]

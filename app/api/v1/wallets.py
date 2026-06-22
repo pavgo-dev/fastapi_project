@@ -17,8 +17,8 @@ router = APIRouter()
 @router.get("/balance", response_model=SingleWalletBalanceResponse | TotalBalanceResponse)
 def get_balance(
     wallet_name: str | None = None,
-    session: Session = Depends(get_session),
     current_user: UserOrm = Depends(get_current_user),
+    session: Session = Depends(get_session),
 ):
     return wallets_service.get_balance(session, current_user, wallet_name)
 
