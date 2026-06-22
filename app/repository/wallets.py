@@ -1,3 +1,4 @@
+import uuid
 from decimal import Decimal
 from typing import cast
 
@@ -7,13 +8,13 @@ from sqlalchemy.orm import Session
 from app.models import WalletOrm
 
 
-def is_wallet_exist(session: Session, user_id: int, wallet_name: str) -> bool:
+def is_wallet_exist(session: Session, user_id: uuid.UUID, wallet_name: str) -> bool:
     query = select(WalletOrm).where(WalletOrm.name == wallet_name, WalletOrm.user_id == user_id)
     wallet = session.scalar(query)
     return wallet is not None
 
 
-def add_income(session: Session, user_id: int, wallet_name: str, amount: Decimal) -> Decimal:
+def add_income(session: Session, user_id: uuid.UUID, wallet_name: str, amount: Decimal) -> Decimal:
     query = (
         update(WalletOrm)
         .where(WalletOrm.name == wallet_name, WalletOrm.user_id == user_id)
@@ -25,14 +26,14 @@ def add_income(session: Session, user_id: int, wallet_name: str, amount: Decimal
     return cast(Decimal, new_balance)
 
 
-def get_wallet_balance_by_name(session: Session, wallet_name: str, user_id: int) -> Decimal:
+def get_wallet_balance_by_name(session: Session, wallet_name: str, user_id: uuid.UUID) -> Decimal:
     balance = session.scalar(
         select(WalletOrm.balance).where(WalletOrm.name == wallet_name, WalletOrm.user_id == user_id)
     )
     return cast(Decimal, balance)
 
 
-def set_new_balance(session: Session, user_id: int, wallet_name: str, new_balance: Decimal) -> Decimal:
+def set_new_balance(session: Session, user_id: uuid.UUID, wallet_name: str, new_balance: Decimal) -> Decimal:
     query = (
         update(WalletOrm)
         .where(WalletOrm.name == wallet_name, WalletOrm.user_id == user_id)
@@ -43,13 +44,13 @@ def set_new_balance(session: Session, user_id: int, wallet_name: str, new_balanc
     return cast(Decimal, result_balance)
 
 
-def get_all_wallets(session: Session, user_id: int) -> dict[str, Decimal]:
+def get_all_wallets(session: Session, user_id: uuid.UUID) -> dict[str, Decimal]:
     query = select(WalletOrm.name, WalletOrm.balance).where(WalletOrm.user_id == user_id)
     result = session.execute(query)
     return {name: Decimal(balance) for name, balance in result}
 
 
-def create_wallet(session: Session, wallet_name: str, user_id: int, amount: Decimal = Decimal("0")) -> WalletOrm:
+def create_wallet(session: Session, wallet_name: str, user_id: uuid.UUID, amount: Decimal = Decimal("0")) -> WalletOrm:
     new_wallet = WalletOrm(name=wallet_name, balance=amount, user_id=user_id)
     session.add(new_wallet)
     session.flush()

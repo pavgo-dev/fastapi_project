@@ -1,6 +1,7 @@
+import uuid
 from decimal import Decimal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class CreateWalletRequest(BaseModel):
@@ -22,11 +23,11 @@ class CreateWalletRequest(BaseModel):
 
 
 class CreateWalletResponse(BaseModel):
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
 
-    id: int
+    id: uuid.UUID
     name: str
-    user_id: int
+    user_id: uuid.UUID
     balance: Decimal
 
 

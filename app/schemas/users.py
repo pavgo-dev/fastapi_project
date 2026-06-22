@@ -1,9 +1,13 @@
-from pydantic import BaseModel, Field, field_validator
+import uuid
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
-class CreateUserRequest(BaseModel):
+class UserBase(BaseModel):
     login: str = Field(max_length=127)
 
+
+class CreateUserRequest(UserBase):
     @field_validator("login")
     @classmethod
     def check_name(cls, v: str) -> str:
@@ -16,7 +20,7 @@ class CreateUserRequest(BaseModel):
         return v
 
 
-class CreateUserResponse(CreateUserRequest):
-    model_config = {"from_attributes": True}
+class CreateUserResponse(UserBase):
+    model_config = ConfigDict(from_attributes=True)
 
-    id: int
+    id: uuid.UUID
