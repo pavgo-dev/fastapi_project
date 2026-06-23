@@ -1,11 +1,12 @@
 import uuid
+from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.enum import CurrencyEnum, OperationTypeEnum
-from app.models import OperationOrm, WalletOrm
+from app.models import OperationOrm
 
 
 def create_operation_log(
@@ -26,12 +27,23 @@ def create_operation_log(
     return log_entry
 
 
-def get_user_operations_history(session: Session, user_id: uuid.UUID) -> list[OperationOrm]:
+def get_operations_list(
+    session: Session,
+    wallets_ids: list[uuid.UUID],
+    date_from: datetime | None,
+    date_to: datetime | None,
+) -> list[OperationOrm]:
+
     query = (
         select(OperationOrm)
-        .join(WalletOrm, OperationOrm.wallet_id == WalletOrm.id)
-        .where(WalletOrm.user_id == user_id)
-        .order_by(OperationOrm.created_at.desc())  # Сначала самые свежие транзакции
+        .where(OperationOrm.wallet_id.in_(wallets_ids))
+        .order_by(OperationOrm.created_at.desc(), OperationOrm.id.desc())
     )
+    if date_from:
+        query = query.filter(OperationOrm.created_at >= date_from)
+
+    if date_to:
+        query = query.filter(OperationOrm.created_at <= date_to)
+
     result = session.execute(query).scalars().all()
     return list(result)

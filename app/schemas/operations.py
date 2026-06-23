@@ -77,3 +77,37 @@ class SingleOperationLogResponse(BaseModel):
 
 class HistoryListResponse(BaseModel):
     operations: list[SingleOperationLogResponse]
+
+
+class TransferCreateRequest(BaseModel):
+    from_wallet_id: uuid.UUID
+    to_wallet_id: uuid.UUID
+    amount: Decimal = Field(gt=Decimal("0"), description="Amount must be positive")
+    description: str | None = Field(default=None, max_length=255)
+
+    @field_validator("to_wallet_id")
+    @classmethod
+    def not_same_wallets(cls, v: uuid.UUID, info) -> uuid.UUID:
+        if "from_wallet_id" in info.data and v == info.data["from_wallet_id"]:
+            raise ValueError("Can not transfer to the same wallet")
+        return v
+
+
+class TransferCreateResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    from_wallet_id: uuid.UUID
+    from_wallet_name: str
+    debiting_amount: Decimal
+    debiting_currency: CurrencyEnum
+    from_wallet_new_balance: Decimal
+
+    to_wallet_id: uuid.UUID
+    to_wallet_name: str
+    replenishment_amount: Decimal
+    replenishment_currency: CurrencyEnum
+    to_wallet_new_balance: Decimal
+
+    type: OperationTypeEnum
+    description: str | None
+    created_at: datetime

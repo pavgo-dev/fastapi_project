@@ -13,7 +13,8 @@ def get_balance(session: Session, current_user: UserOrm, wallet_name: str | None
         wallets = wallets_repository.get_all_wallets(session, user_id)
         return {
             "wallets": [
-                {"wallet_name": name, "balance": balance, "currency": currency} for name, balance, currency in wallets
+                {"wallet_name": name, "balance": balance, "currency": currency}
+                for name, balance, currency, _ in wallets
             ]
         }
     # Если имя указано, запрашиваем баланс конкретного кошелька

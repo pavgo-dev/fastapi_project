@@ -47,10 +47,12 @@ def set_new_balance(session: Session, user_id: uuid.UUID, wallet_name: str, new_
     return cast(Decimal, result_balance)
 
 
-def get_all_wallets(session: Session, user_id: uuid.UUID) -> list[tuple[str, Decimal, CurrencyEnum]]:
-    query = select(WalletOrm.name, WalletOrm.balance, WalletOrm.currency).where(WalletOrm.user_id == user_id)
+def get_all_wallets(session: Session, user_id: uuid.UUID) -> list[tuple[str, Decimal, CurrencyEnum, uuid.UUID]]:
+    query = select(WalletOrm.name, WalletOrm.balance, WalletOrm.currency, WalletOrm.id).where(
+        WalletOrm.user_id == user_id
+    )
     result = session.execute(query).all()
-    return [(row.name, row.balance, row.currency) for row in result]
+    return [(row.name, row.balance, row.currency, row.id) for row in result]
 
 
 def create_wallet(
@@ -61,3 +63,17 @@ def create_wallet(
     session.flush()
     session.refresh(new_wallet)
     return new_wallet
+
+
+def get_wallet_by_id_for_update(session: Session, user_id: uuid.UUID, wallet_id: uuid.UUID) -> WalletOrm | None:
+    query = (
+        select(WalletOrm)
+        .where(WalletOrm.id == wallet_id, WalletOrm.user_id == user_id)
+        .with_for_update()  # Защита от Race Condition на этапе чтения
+    )
+    return session.scalar(query)
+
+
+def get_wallet_by_id_readonly(session: Session, user_id: uuid.UUID, wallet_id: uuid.UUID) -> WalletOrm | None:
+    query = select(WalletOrm).where(WalletOrm.id == wallet_id, WalletOrm.user_id == user_id)
+    return session.scalar(query)

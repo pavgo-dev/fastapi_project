@@ -1,4 +1,4 @@
-from enum import StrEnum
+from enum import StrEnum, auto
 
 
 class CurrencyEnum(StrEnum):
@@ -8,5 +8,6 @@ class CurrencyEnum(StrEnum):
 
 
 class OperationTypeEnum(StrEnum):
-    income = "income"
-    expense = "expense"
+    EXPENSE = auto()
+    INCOME = auto()
+    TRANSFER = auto()
