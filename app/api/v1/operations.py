@@ -38,12 +38,12 @@ def add_expense(
 
 
 @router.post("/operations/transfer", response_model=TransferCreateResponse)
-def transfer_between_wallets(
+async def transfer_between_wallets(
     operation: TransferCreateRequest,
     current_user: UserOrm = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
-    return operations_service.transfer_between_wallets(session, current_user, operation)
+    return await operations_service.transfer_between_wallets(session, current_user, operation)
 
 
 @router.get("/operations", response_model=HistoryListResponse)

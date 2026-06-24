@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from decimal import ROUND_HALF_UP, Decimal
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -120,7 +121,7 @@ def get_operations_list(
     return {"operations": operations}
 
 
-def transfer_between_wallets(
+async def transfer_between_wallets(
     session: Session,
     user: UserOrm,
     operation: TransferCreateRequest,
@@ -137,10 +138,12 @@ def transfer_between_wallets(
     if (new_from_walet_balance := from_wallet.balance - operation.amount) < 0:
         raise HTTPException(status_code=400, detail=f"Not enough balance: {from_wallet.balance} {from_wallet.currency}")
 
+    # Точное округление
+    precision = Decimal("0.0001")
     # Привести валюты по курсу
     if from_wallet.currency != to_wallet.currency:
-        exchange_rate = get_exchange_rate(from_wallet.currency, to_wallet.currency)
-        target_amount = round(operation.amount * exchange_rate, 4)  # Сколько придёт получателю
+        exchange_rate = await get_exchange_rate(from_wallet.currency, to_wallet.currency)
+        target_amount = (operation.amount * exchange_rate).quantize(precision, rounding=ROUND_HALF_UP)
     else:
         target_amount = operation.amount  # Сколько придёт получателю
 
@@ -148,8 +151,8 @@ def transfer_between_wallets(
     # wallets_repository.set_new_balance(session, user.id, from_wallet.name, new_from_walet_balance)
     # wallets_repository.set_new_balance(session, user.id, to_wallet.name, to_wallet.balance + target_amount)
 
-    from_wallet.balance = round(new_from_walet_balance, 4)
-    to_wallet.balance = round(to_wallet.balance + target_amount, 4)
+    from_wallet.balance = (new_from_walet_balance).quantize(precision, rounding=ROUND_HALF_UP)
+    to_wallet.balance = (to_wallet.balance + target_amount).quantize(precision, rounding=ROUND_HALF_UP)
 
     # Алихимия через Persistent Map должна сделать автоматом, нужно проверить
     # session.add(from_wallet)

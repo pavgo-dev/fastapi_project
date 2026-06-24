@@ -1,9 +1,7 @@
 # курсы валют
 from decimal import Decimal
 
-import requests
-
-# import httpx2  # ДЛЯ БУДУЩЕЙ АСИНХРОННОСТИ
+import httpx2
 from fastapi import HTTPException
 
 from app.enum import CurrencyEnum
@@ -19,7 +17,7 @@ from app.enum import CurrencyEnum
 # }
 
 
-def get_exchange_rate(base: CurrencyEnum, target: CurrencyEnum) -> Decimal:
+async def get_exchange_rate(base: CurrencyEnum, target: CurrencyEnum) -> Decimal:
     if base == target:
         return Decimal("1.0")
 
@@ -28,10 +26,11 @@ def get_exchange_rate(base: CurrencyEnum, target: CurrencyEnum) -> Decimal:
     url = f"https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/{base_str}.json"
 
     try:
-        response = requests.get(url, timeout=5)
-        response.raise_for_status()
+        async with httpx2.AsyncClient() as session:
+            response = session.get(url, timeout=5)
+            response.raise_for_status()
 
-        data = response.json()
+            data = response.json()
 
     except Exception:
         raise HTTPException(status_code=502, detail="Service is currently unavailable") from None
