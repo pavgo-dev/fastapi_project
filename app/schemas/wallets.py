@@ -42,12 +42,11 @@ class CreateWalletResponse(BaseModel):
     currency: CurrencyEnum = CurrencyEnum.RUB
 
 
+class AllWalletsResponse(BaseModel):
+    wallets: list[CreateWalletResponse]
+
+
 class SingleWalletBalanceResponse(BaseModel):
     wallet_name: str
     balance: Decimal
     currency: CurrencyEnum
-
-
-# Ответ, когда запросили сумму всех кошельков
-class TotalBalanceResponse(BaseModel):
-    wallets: list[SingleWalletBalanceResponse]

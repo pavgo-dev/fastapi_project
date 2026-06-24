@@ -9,7 +9,7 @@ from decimal import Decimal
 # wallet_3 = WalletOrm(name="cash", balance=Decimal("5050"), user_id=test_user_1.id, currency="RUB"))
 
 
-def test_succes_single_balance_1(client, test_user, test_wallet, test_wallet_2, test_user_1, test_wallet_3):
+def test_succes(client, test_user, test_wallet, test_wallet_2, test_user_1, test_wallet_3):
     response = client.get(
         "api/v1/balance",
         params={"wallet_name": test_wallet.name},
@@ -22,28 +22,7 @@ def test_succes_single_balance_1(client, test_user, test_wallet, test_wallet_2, 
     assert response.json()["currency"] == "RUB"
 
 
-def test_succes_total_balance_1(client, test_user, test_wallet, test_wallet_2, test_user_1, test_wallet_3):
-    response = client.get(
-        "api/v1/balance",
-        params={},
-        headers={"Authorization": f"Bearer {test_user.login}"},
-    )
-
-    assert response.status_code == 200
-
-    wallets_list = response.json()["wallets"]
-    assert len(wallets_list) == 2  # У test_user два кошелька (card и cash)
-    # Проверка кошелька card
-    assert wallets_list[0]["wallet_name"] == "card"
-    assert Decimal(str(wallets_list[0]["balance"])) == Decimal("200.20")
-    assert wallets_list[0]["currency"] == "RUB"
-    # Проверка кошелька cash
-    assert wallets_list[1]["wallet_name"] == "cash"
-    assert Decimal(str(wallets_list[1]["balance"])) == Decimal("100.50")
-    assert wallets_list[1]["currency"] == "USD"
-
-
-def test_succes_single_balance_2(client, test_user, test_wallet, test_wallet_2, test_user_1, test_wallet_3):
+def test_succes_1(client, test_user, test_wallet, test_wallet_2, test_user_1, test_wallet_3):
     response = client.get(
         "api/v1/balance",
         params={"wallet_name": test_wallet_3.name},
@@ -54,22 +33,6 @@ def test_succes_single_balance_2(client, test_user, test_wallet, test_wallet_2, 
     assert response.json()["wallet_name"] == test_wallet_3.name
     assert Decimal(str(response.json()["balance"])) == Decimal("5050")
     assert response.json()["currency"] == "RUB"
-
-
-def test_succes_total_balance_2(client, test_user, test_wallet, test_wallet_2, test_user_1, test_wallet_3):
-    response = client.get(
-        "api/v1/balance",
-        params={},
-        headers={"Authorization": f"Bearer {test_user_1.login}"},
-    )
-
-    assert response.status_code == 200
-
-    wallets_list = response.json()["wallets"]
-    assert len(wallets_list) == 1
-    assert wallets_list[0]["wallet_name"] == "cash"
-    assert Decimal(str(wallets_list[0]["balance"])) == Decimal("5050")
-    assert wallets_list[0]["currency"] == "RUB"
 
 
 def test_wrong_wallet_name(client, test_user, test_wallet, test_wallet_2, test_user_1, test_wallet_3):
@@ -86,9 +49,11 @@ def test_not_authorized_total(client, test_user, test_wallet, test_wallet_2, tes
     response = client.get("api/v1/balance", params={})
 
     assert response.status_code == 401
+    assert response.json() == {"detail": "Not authenticated"}
 
 
 def test_not_authorized_single(client, test_user, test_wallet, test_wallet_2, test_user_1, test_wallet_3):
     response = client.get("api/v1/balance", params={"wallet_name": "cash"})
 
     assert response.status_code == 401
+    assert response.json() == {"detail": "Not authenticated"}

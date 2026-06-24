@@ -47,12 +47,14 @@ def set_new_balance(session: Session, user_id: uuid.UUID, wallet_name: str, new_
     return cast(Decimal, result_balance)
 
 
-def get_all_wallets(session: Session, user_id: uuid.UUID) -> list[tuple[str, Decimal, CurrencyEnum, uuid.UUID]]:
-    query = select(WalletOrm.name, WalletOrm.balance, WalletOrm.currency, WalletOrm.id).where(
+def get_all_wallets(
+    session: Session, user_id: uuid.UUID
+) -> list[tuple[str, Decimal, CurrencyEnum, uuid.UUID, uuid.UUID]]:
+    query = select(WalletOrm.name, WalletOrm.balance, WalletOrm.currency, WalletOrm.id, WalletOrm.user_id).where(
         WalletOrm.user_id == user_id
     )
     result = session.execute(query).all()
-    return [(row.name, row.balance, row.currency, row.id) for row in result]
+    return [(row.name, row.balance, row.currency, row.id, row.user_id) for row in result]
 
 
 def create_wallet(

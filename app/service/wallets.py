@@ -6,18 +6,9 @@ from app.repository import wallets as wallets_repository
 from app.schemas.wallets import CreateWalletRequest
 
 
-def get_balance(session: Session, current_user: UserOrm, wallet_name: str | None = None):
+def get_balance(session: Session, current_user: UserOrm, wallet_name: str):
     user_id = current_user.id
-    # Если имя кошелька не указано, возвращаем список всех кошельков
-    if wallet_name is None:
-        wallets = wallets_repository.get_all_wallets(session, user_id)
-        return {
-            "wallets": [
-                {"wallet_name": name, "balance": balance, "currency": currency}
-                for name, balance, currency, _ in wallets
-            ]
-        }
-    # Если имя указано, запрашиваем баланс конкретного кошелька
+
     balance_data = wallets_repository.get_wallet_balance_by_name(session, wallet_name, user_id)
     # Если метод вернул None значит кошелька не существует
     if balance_data is None:
@@ -38,3 +29,18 @@ def create_wallet(session: Session, current_user: UserOrm, wallet: CreateWalletR
     )
     session.commit()
     return new_wallet
+
+
+def get_wallets(session: Session, current_user: UserOrm) -> list[dict]:
+    wallets = wallets_repository.get_all_wallets(session, current_user.id)
+    wallets_models = [
+        {
+            "name": wallet[0],
+            "balance": wallet[1],
+            "currency": wallet[2],
+            "id": wallet[3],
+            "user_id": wallet[4],
+        }
+        for wallet in wallets
+    ]
+    return wallets_models

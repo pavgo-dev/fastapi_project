@@ -27,7 +27,7 @@ async def get_exchange_rate(base: CurrencyEnum, target: CurrencyEnum) -> Decimal
 
     try:
         async with httpx2.AsyncClient() as session:
-            response = session.get(url, timeout=5)
+            response = await session.get(url, timeout=5)
             response.raise_for_status()
 
             data = response.json()
