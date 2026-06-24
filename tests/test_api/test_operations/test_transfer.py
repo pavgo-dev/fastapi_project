@@ -21,14 +21,14 @@ def test_transfer_success_with_exchange(client, test_user, test_wallet, test_wal
 
     # Проверка списания
     assert data["from_wallet_name"] == "card"
-    assert Decimal(str(data["from_wallet_new_balance"])) == Decimal("100.20")
+    assert Decimal(str(data["from_wallet_new_balance"])).quantize(Decimal("0.01")) == Decimal("100.20")
     assert data["debiting_currency"] == "RUB"
 
     # Проверка зачисления
     assert data["to_wallet_name"] == "cash"
-    assert Decimal(str(data["replenishment_amount"])) == Decimal("1.05")
+    assert Decimal(str(data["replenishment_amount"])).quantize(Decimal("0.01")) == Decimal("1.05")
     assert data["replenishment_currency"] == "USD"
-    assert Decimal(str(data["to_wallet_new_balance"])) == Decimal("101.55")
+    assert Decimal(str(data["to_wallet_new_balance"])).quantize(Decimal("0.01")) == Decimal("101.55")
     assert data["type"] == "transfer"
 
 

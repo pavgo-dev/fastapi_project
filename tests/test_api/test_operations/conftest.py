@@ -7,6 +7,33 @@ from app.models import OperationOrm, UserOrm, WalletOrm
 from app.repository import operations as operations_repository
 
 
+@pytest.fixture(autouse=True)
+def mock_exchange_rate(mocker):
+
+    def fake_get_exchange_rate(base, target) -> Decimal:
+        base_str = str(base).upper()
+        target_str = str(target).upper()
+
+        if base_str == target_str:
+            return Decimal("1.0")
+
+        rates = {
+            ("RUB", "USD"): Decimal("0.0105"),
+            ("USD", "RUB"): Decimal("95.0"),
+            ("EUR", "USD"): Decimal("1.087"),
+            ("USD", "EUR"): Decimal("0.92"),
+            ("EUR", "RUB"): Decimal("103.26"),
+            ("RUB", "EUR"): Decimal("0.0097"),
+        }
+
+        return rates.get((base_str, target_str), Decimal("1.0"))
+
+    # Замена функции в самом модуле, где она используется бизнес-логикой
+    mocker.patch("app.service.operations.get_exchange_rate", side_effect=fake_get_exchange_rate)
+
+    return fake_get_exchange_rate
+
+
 @pytest.fixture
 def test_user(db_session):
     user = UserOrm(login="test_user")

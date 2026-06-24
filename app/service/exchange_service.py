@@ -3,7 +3,7 @@ from decimal import Decimal
 
 import requests
 
-# import httpx   # ДЛЯ БУДУЩЕЙ АСИНХРОННОСТИ
+# import httpx2  # ДЛЯ БУДУЩЕЙ АСИНХРОННОСТИ
 from fastapi import HTTPException
 
 from app.enum import CurrencyEnum
@@ -28,21 +28,22 @@ def get_exchange_rate(base: CurrencyEnum, target: CurrencyEnum) -> Decimal:
     url = f"https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/{base_str}.json"
 
     try:
-        response = requests.get(url, timeout=5.0)
+        response = requests.get(url, timeout=5)
         response.raise_for_status()
 
         data = response.json()
 
     except Exception:
-        raise HTTPException(status_code=502, detail="Service is unavailable") from None
+        raise HTTPException(status_code=502, detail="Service is currently unavailable") from None
 
     currency_rate = data.get(base_str, {})
     rate = currency_rate.get(target_str)
 
-    if rate is not None:
+    if rate is None:
+        raise HTTPException(status_code=404, detail=f"Exchange rate for {base} - {target} is not found")
+
+    else:
         try:
             return Decimal(str(rate))
         except Exception:
             raise HTTPException(status_code=422, detail="Invalid rate format from provider") from None
-
-    raise HTTPException(status_code=404, detail=f"Exchange rate for {base} - {target} is not found")
