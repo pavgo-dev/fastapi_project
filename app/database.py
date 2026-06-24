@@ -14,5 +14,5 @@ engine = create_engine(url=settings.DATABASE_URL_psycopg, echo=True)
 SessionLocal = sessionmaker(bind=engine, expire_on_commit=False, autoflush=False)
 
 #  АСИНХРОННЫЙ ПУЛ
-async_engine = create_async_engine(url=settings.DATABASE_URL_psycopg, echo=True)
+async_engine = create_async_engine(url=settings.DATABASE_URL_psycopg_async, echo=True)
 async_session_factory = async_sessionmaker(bind=async_engine, expire_on_commit=False, autoflush=False)

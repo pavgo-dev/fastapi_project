@@ -1,18 +1,25 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.responses import Response
 
 from app.api.v1.operations import router as operations_router
 from app.api.v1.users import router as users_router
 from app.api.v1.wallets import router as wallets_router
-from app.database import Base, engine
+from app.database import Base, async_engine
 
-# Создание таблиц
-# Base.metadata.drop_all(bind=engine)
-Base.metadata.create_all(bind=engine)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Асинхронно создаем таблицы при старте приложения
+    async with async_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+    # Тут можно прописать логику закрытия ресурсов при выключении
 
 
 # инициализация FastAPI приложения
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 
 
 # делаем  health check endpoint

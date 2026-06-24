@@ -3,7 +3,7 @@ from datetime import datetime
 from decimal import ROUND_HALF_UP, Decimal
 
 from fastapi import HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.enum import OperationTypeEnum
 from app.models import UserOrm
@@ -13,22 +13,23 @@ from app.schemas.operations import OperationRequest, TransferCreateRequest
 from app.service.exchange_service import get_exchange_rate
 
 
-def add_income(session: Session, user: UserOrm, operation: OperationRequest) -> dict:
+async def add_income(session: AsyncSession, user: UserOrm, operation: OperationRequest) -> dict:
     user_id = user.id
 
-    # Блокировать кошелек и получить его данные (нужен wallet_id)
-    wallet_data = wallets_repository.get_balance_for_update(session, operation.wallet_name, user_id)
+    wallet_data = await wallets_repository.get_balance_for_update(session, operation.wallet_name, user_id)
     if wallet_data is None:
         raise HTTPException(status_code=404, detail=f"Wallet '{operation.wallet_name}' not found")
 
     wallet_id, balance, currency = wallet_data
     new_balance = balance + operation.amount
 
-    # Обновлить кошелек
-    wallets_repository.set_new_balance(session, user_id, operation.wallet_name, new_balance)
+    wallet = await wallets_repository.get_wallet_by_id_for_update(session, user_id, wallet_id)
 
-    # Записать лог в историю операций
-    log_entry = operations_repository.create_operation_log(
+    if wallet is None:
+        raise HTTPException(status_code=404, detail=f"Wallet '{operation.wallet_name}' not found")
+    wallet.balance = new_balance
+
+    log_entry = await operations_repository.create_operation_log(
         session,
         wallet_id=wallet_id,
         op_type=OperationTypeEnum.INCOME,
@@ -38,7 +39,7 @@ def add_income(session: Session, user: UserOrm, operation: OperationRequest) -> 
         description=operation.description,
     )
 
-    session.commit()
+    await session.commit()
 
     return {
         "id": log_entry.id,
@@ -54,11 +55,10 @@ def add_income(session: Session, user: UserOrm, operation: OperationRequest) -> 
     }
 
 
-def add_expense(session: Session, user: UserOrm, operation: OperationRequest) -> dict:
+async def add_expense(session: AsyncSession, user: UserOrm, operation: OperationRequest) -> dict:
     user_id = user.id
 
-    # Заблокировать кошелек и получить данные
-    wallet_data = wallets_repository.get_balance_for_update(session, operation.wallet_name, user_id)
+    wallet_data = await wallets_repository.get_balance_for_update(session, operation.wallet_name, user_id)
     if wallet_data is None:
         raise HTTPException(status_code=404, detail=f"Wallet '{operation.wallet_name}' not found")
 
@@ -70,11 +70,14 @@ def add_expense(session: Session, user: UserOrm, operation: OperationRequest) ->
             detail=f"Insufficient funds. Available: {balance} {currency}",
         )
 
-    # Обновить кошель
-    wallets_repository.set_new_balance(session, user_id, operation.wallet_name, new_balance)
+    # Извлекаем объект кошелька и обновляем баланс (Unit of Work)
+    wallet = await wallets_repository.get_wallet_by_id_for_update(session, user_id, wallet_id)
 
-    # Записать лог в историю операций
-    log_entry = operations_repository.create_operation_log(
+    if wallet is None:
+        raise HTTPException(status_code=404, detail=f"Wallet '{operation.wallet_name}' not found")
+    wallet.balance = new_balance
+
+    log_entry = await operations_repository.create_operation_log(
         session,
         wallet_id=wallet_id,
         op_type=OperationTypeEnum.EXPENSE,
@@ -84,7 +87,7 @@ def add_expense(session: Session, user: UserOrm, operation: OperationRequest) ->
         description=operation.description,
     )
 
-    session.commit()
+    await session.commit()
 
     return {
         "id": log_entry.id,
@@ -100,8 +103,8 @@ def add_expense(session: Session, user: UserOrm, operation: OperationRequest) ->
     }
 
 
-def get_operations_list(
-    session: Session,
+async def get_operations_list(
+    session: AsyncSession,
     user: UserOrm,
     wallet_id: uuid.UUID | None = None,
     date_from: datetime | None = None,
@@ -109,75 +112,73 @@ def get_operations_list(
 ) -> dict:
 
     if wallet_id:
-        wallet = wallets_repository.get_wallet_by_id_readonly(session, user.id, wallet_id)
+        wallet = await wallets_repository.get_wallet_by_id_readonly(session, user.id, wallet_id)
         if wallet is None:
             raise HTTPException(status_code=404, detail=f"Wallet '{wallet_id}' not found")
         wallets_ids = [wallet.id]
     else:
-        wallets = wallets_repository.get_all_wallets(session, user.id)
-        wallets_ids = [wallet[3] for wallet in wallets]
+        wallets = await wallets_repository.get_all_wallets(session, user.id)
+        wallets_ids = [wallet.id for wallet in wallets]
 
-    operations = operations_repository.get_operations_list(session, wallets_ids, date_from, date_to)
+    operations = await operations_repository.get_operations_list(session, wallets_ids, date_from, date_to)
     return {"operations": operations}
 
 
 async def transfer_between_wallets(
-    session: Session,
+    session: AsyncSession,
     user: UserOrm,
     operation: TransferCreateRequest,
-) -> dict:  # OperationResponse Schema
+) -> dict:
 
-    from_wallet = wallets_repository.get_wallet_by_id_for_update(session, user.id, operation.from_wallet_id)
-    to_wallet = wallets_repository.get_wallet_by_id_for_update(session, user.id, operation.to_wallet_id)
+    # ЗАЩИТА ОТ DEADLOCK: Блокируем строки в БД в строго фиксированном порядке по UUID
+    if operation.from_wallet_id < operation.to_wallet_id:
+        from_wallet = await wallets_repository.get_wallet_by_id_for_update(session, user.id, operation.from_wallet_id)
+        # Получателя ищем БЕЗ привязки к user.id отправителя, чтобы разрешить межпользовательские переводы
+        to_wallet = await wallets_repository.get_wallet_by_id_for_update_no_user(session, operation.to_wallet_id)
+    else:
+        to_wallet = await wallets_repository.get_wallet_by_id_for_update_no_user(session, operation.to_wallet_id)
+        from_wallet = await wallets_repository.get_wallet_by_id_for_update(session, user.id, operation.from_wallet_id)
 
     if not from_wallet:
-        raise HTTPException(status_code=404, detail="Debiting wallet did not exists")
+        raise HTTPException(status_code=404, detail="Debiting wallet does not exist")
     if not to_wallet:
         raise HTTPException(status_code=404, detail="Wallet for transfer was not found")
 
-    if (new_from_walet_balance := from_wallet.balance - operation.amount) < 0:
+    if (new_from_wallet_balance := from_wallet.balance - operation.amount) < 0:
         raise HTTPException(status_code=400, detail=f"Not enough balance: {from_wallet.balance} {from_wallet.currency}")
 
-    # Точное округление
     precision = Decimal("0.0001")
-    # Привести валюты по курсу
+
+    # Расчет курса обмена
     if from_wallet.currency != to_wallet.currency:
         exchange_rate = await get_exchange_rate(from_wallet.currency, to_wallet.currency)
         target_amount = (operation.amount * exchange_rate).quantize(precision, rounding=ROUND_HALF_UP)
     else:
-        target_amount = operation.amount  # Сколько придёт получателю
+        target_amount = operation.amount
 
-    # Обновить кошель
-    # wallets_repository.set_new_balance(session, user.id, from_wallet.name, new_from_walet_balance)
-    # wallets_repository.set_new_balance(session, user.id, to_wallet.name, to_wallet.balance + target_amount)
-
-    from_wallet.balance = (new_from_walet_balance).quantize(precision, rounding=ROUND_HALF_UP)
+    from_wallet.balance = (new_from_wallet_balance).quantize(precision, rounding=ROUND_HALF_UP)
     to_wallet.balance = (to_wallet.balance + target_amount).quantize(precision, rounding=ROUND_HALF_UP)
 
-    # Алихимия через Persistent Map должна сделать автоматом, нужно проверить
-    # session.add(from_wallet)
-    # session.add(to_wallet)
-
-    # Записать историю операций
-    operations_repository.create_operation_log(
+    # Логирование операций
+    await operations_repository.create_operation_log(
         session,
         wallet_id=from_wallet.id,
-        op_type=OperationTypeEnum.EXPENSE,
+        op_type=OperationTypeEnum.TRANSFER,
         amount=operation.amount,
         currency=from_wallet.currency,
         description=operation.description,
     )
 
-    to_wallet_log = operations_repository.create_operation_log(
+    to_wallet_log = await operations_repository.create_operation_log(
         session,
         wallet_id=to_wallet.id,
-        op_type=OperationTypeEnum.INCOME,
+        op_type=OperationTypeEnum.TRANSFER,
         amount=target_amount,
         currency=to_wallet.currency,
         description=operation.description,
     )
 
-    session.commit()
+    await session.commit()
 
     return {
         "from_wallet_id": from_wallet.id,

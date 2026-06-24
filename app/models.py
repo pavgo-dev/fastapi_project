@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Annotated
 
-from sqlalchemy import UUID, ForeignKey, Numeric, String, UniqueConstraint
+from sqlalchemy import UUID, ForeignKey, Index, Numeric, String, UniqueConstraint
 from sqlalchemy import Enum as SqlalchemyEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from uuid_utils import uuid7
@@ -47,6 +47,7 @@ class WalletOrm(Base):
 
 class OperationOrm(Base):
     __tablename__ = "operations"
+    __table_args__ = (Index("idx_wallet_created", "wallet_id", "created_at"),)
 
     id: Mapped[id_pk]
     wallet_id: Mapped[uuid.UUID] = mapped_column(

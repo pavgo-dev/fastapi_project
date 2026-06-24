@@ -10,7 +10,6 @@ from app.enum import CurrencyEnum, OperationTypeEnum
 
 class OperationRequest(BaseModel):
     wallet_name: str = Field(max_length=127)
-    amount: Decimal = Field(gt=Decimal("0"), description="Amount must be positive")
     amount: Annotated[
         Decimal,
         Field(

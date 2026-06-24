@@ -17,6 +17,10 @@ from app.enum import CurrencyEnum
 # }
 
 
+# Инициализируем один постоянный клиент для всего приложения
+http_client = httpx2.AsyncClient()
+
+
 async def get_exchange_rate(base: CurrencyEnum, target: CurrencyEnum) -> Decimal:
     if base == target:
         return Decimal("1.0")
@@ -26,12 +30,9 @@ async def get_exchange_rate(base: CurrencyEnum, target: CurrencyEnum) -> Decimal
     url = f"https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/{base_str}.json"
 
     try:
-        async with httpx2.AsyncClient() as session:
-            response = await session.get(url, timeout=5)
-            response.raise_for_status()
-
-            data = response.json()
-
+        response = await http_client.get(url, timeout=5)
+        response.raise_for_status()
+        data = response.json()
     except Exception:
         raise HTTPException(status_code=502, detail="Service is currently unavailable") from None
 

@@ -3,14 +3,14 @@ from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.enum import CurrencyEnum, OperationTypeEnum
 from app.models import OperationOrm
 
 
-def create_operation_log(
-    session: Session,
+async def create_operation_log(
+    session: AsyncSession,
     wallet_id: uuid.UUID,
     op_type: OperationTypeEnum,
     amount: Decimal,
@@ -23,12 +23,12 @@ def create_operation_log(
         wallet_id=wallet_id, type=op_type, amount=amount, currency=currency, category=category, description=description
     )
     session.add(log_entry)
-    session.flush()  # Генерирует UUIDv7 для лога транзакции
+    await session.flush()  # Генерирует UUIDv7 для лога транзакции
     return log_entry
 
 
-def get_operations_list(
-    session: Session,
+async def get_operations_list(
+    session: AsyncSession,
     wallets_ids: list[uuid.UUID],
     date_from: datetime | None,
     date_to: datetime | None,
@@ -45,5 +45,5 @@ def get_operations_list(
     if date_to:
         query = query.filter(OperationOrm.created_at <= date_to)
 
-    result = session.execute(query).scalars().all()
-    return list(result)
+    result = await session.execute(query)
+    return list(result.scalars().all())

@@ -1,23 +1,23 @@
-from collections.abc import Generator
+from collections.abc import AsyncGenerator
 
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import SessionLocal
+from app.database import async_session_factory
 from app.models import UserOrm
 from app.repository import users as users_repository
 
 security = HTTPBearer()
 
 
-def get_session() -> Generator[Session, None, None]:
-    with SessionLocal() as session:
-        yield session  # Передает сессию и держит её открытой на время запроса
+async def get_session() -> AsyncGenerator[AsyncSession, None]:
+    async with async_session_factory() as session:
+        yield session  # Передает асинхронную сессию и автоматически закроет её после запроса
 
 
-def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security), session: Session = Depends(get_session)
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security), session: AsyncSession = Depends(get_session)
 ) -> UserOrm:
     token = credentials.credentials
 
@@ -29,7 +29,7 @@ def get_current_user(
         raise HTTPException(status_code=401, detail="Invalid token") from None
 
     # Ищу пользователя в базе данных
-    user = users_repository.get_user(session, login=login)
+    user = await users_repository.get_user(session, login=login)
 
     if not user:
         raise HTTPException(status_code=401, detail="Not authenticated")

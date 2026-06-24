@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.dependency import get_current_user, get_session
 from app.models import UserOrm
@@ -20,38 +20,38 @@ router = APIRouter()
 
 
 @router.post("/operations/income", response_model=OperationResponse)
-def add_income(
+async def add_income(
     operation: OperationRequest,
     current_user: UserOrm = Depends(get_current_user),
-    session: Session = Depends(get_session),
+    session: AsyncSession = Depends(get_session),
 ):
-    return operations_service.add_income(session, current_user, operation)
+    return await operations_service.add_income(session, current_user, operation)
 
 
 @router.post("/operations/expense", response_model=OperationResponse)
-def add_expense(
+async def add_expense(
     operation: OperationRequest,
     current_user: UserOrm = Depends(get_current_user),
-    session: Session = Depends(get_session),
+    session: AsyncSession = Depends(get_session),
 ):
-    return operations_service.add_expense(session, current_user, operation)
+    return await operations_service.add_expense(session, current_user, operation)
 
 
 @router.post("/operations/transfer", response_model=TransferCreateResponse)
 async def transfer_between_wallets(
     operation: TransferCreateRequest,
     current_user: UserOrm = Depends(get_current_user),
-    session: Session = Depends(get_session),
+    session: AsyncSession = Depends(get_session),
 ):
     return await operations_service.transfer_between_wallets(session, current_user, operation)
 
 
 @router.get("/operations", response_model=HistoryListResponse)
-def show_logs(
+async def show_logs(
     wallet_id: Annotated[uuid.UUID | None, Query()] = None,
     date_from: Annotated[datetime | None, Query()] = None,
     date_to: Annotated[datetime | None, Query()] = None,
     current_user: UserOrm = Depends(get_current_user),
-    session: Session = Depends(get_session),
+    session: AsyncSession = Depends(get_session),
 ):
-    return operations_service.get_operations_list(session, current_user, wallet_id, date_from, date_to)
+    return await operations_service.get_operations_list(session, current_user, wallet_id, date_from, date_to)
